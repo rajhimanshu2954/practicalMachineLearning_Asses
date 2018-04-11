@@ -1,0 +1,194 @@
+---
+title: "Coursera_PML_Assessment"
+author: "Himanshu Raj"
+date: "4 April 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Practical Machine Learning Course Project Report
+
+### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### Data
+
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+### Expected Results
+
+The goal of your project is to predict the manner in which they did the exercise
+
+
+### Installing Packages and Loading Necessary Libraries
+```{r lib, echo=T, results="hide"}
+library(rattle)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(corrplot)
+library(randomForest)
+library(RColorBrewer)
+```
+
+
+### Getting Data
+```{r getData, echo=T}
+trainUrl <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainFile <- "pml-training.csv"
+testFile  <- "pml-testing.csv"
+if (!file.exists(trainFile)) {
+  download.file(trainUrl, destfile = trainFile)
+}
+if (!file.exists(testFile)) {
+  download.file(testUrl, destfile = testFile)
+}
+rm(trainUrl)
+rm(testUrl)
+```
+
+### Reading the Data
+
+```{r readData, echo=T}
+train <- read.csv(trainFile)
+test <- read.csv(testFile)
+dim(train)
+summary(train$classe)
+rm(trainFile)
+rm(testFile)
+```
+
+### Cleaning the Data
+
+Step1:  clean the Near Zero Variance Variables from the train data:
+For more info on the package and process please visit below link: https://www.rdocumentation.org/packages/caret/versions/6.0-79/topics/nearZeroVar
+
+```{r cleaningData, echo=T}
+nearZero<- nearZeroVar(train, saveMetrics = TRUE)
+head(nearZero, 20)
+train_new <- train[, !nearZero$nzv]
+test_new <- test[, !nearZero$nzv]
+dim(train_new)
+dim(test_new)
+rm(train)
+rm(test)
+rm(nearZero)
+```
+
+### Cleaning the unwated predictors from the remaining set of predictors like timestamp and username
+
+```{r unwantedData, echo=T}
+regex <- grepl("^X|timestamp|user_name", names(train_new))
+training <- train_new[, !regex]
+testing <- test_new[, !regex]
+rm(regex)
+rm(train_new)
+rm(test_new)
+dim(training)
+dim(testing)
+```
+
+### Removing the NA's Column
+
+```{r naRemoval, echo=T}
+cond <- (colSums(is.na(training)) == 0)
+training <- training[, cond]
+testing <- testing[, cond]
+rm(cond)
+```
+
+### Finding the correlation matrix
+
+```{r correlationData, echo=T}
+corrplot(cor(training[, -length(names(training))]), method = "color", tl.cex = 0.5)
+```
+
+### Dividing the Data into training and test sets
+Spliting the cleaned training set into a pure training data set (80%) to train the machine and a validation data set (20%) to conduct cross validation.
+
+```{r dataDivision, echo=T}
+set.seed(12345) # For reproducibile purpose
+inTrain <- createDataPartition(training$classe, p = 0.80, list = FALSE)
+validation <- training[-inTrain, ]
+training <- training[inTrain, ]
+rm(inTrain)
+```
+
+## Data Modelling 
+
+### Decision Tree
+Using Decision Tree algorithm to fit a model.
+
+```{r desicionModel, echo=T}
+modelTree <- rpart(classe ~ ., data = training, method = "class")
+prp(modelTree)
+```
+
+Now, we estimate the performance of the model on the validation data set.
+
+```{r testDesicionModel, echo=T}
+predictTree <- predict(modelTree, validation, type = "class")
+confusionMatrix(validation$classe, predictTree)
+accuracy <- postResample(predictTree, validation$classe)
+ose <- 1 - as.numeric(confusionMatrix(validation$classe, predictTree)$overall[1])
+rm(predictTree)
+rm(modelTree)
+```
+
+The Estimated Accuracy of the rPart Model is `r accuracy[1]*100`% and the Estimated Out-of-Sample Error is `r accuracy[1]*100`%.
+
+### Random Forest
+
+```{r RFModel, echo=T}
+modelRF <- train(classe ~ ., data = training, method = "rf", trControl = trainControl(method = "cv", 5), ntree = 250)
+modelRF
+```
+
+Now, estimating the performance of the model on the validation data set.
+
+```{r testRFModel, echo=T}
+predictRF <- predict(modelRF, validation)
+confusionMatrix(validation$classe, predictRF)
+accuracy <- postResample(predictRF, validation$classe)
+ose <- 1 - as.numeric(confusionMatrix(validation$classe, predictRF)$overall[1])
+rm(predictRF)
+```
+
+The Estimated Accuracy of the Random Forest Model is `r accuracy[1]*100`% and the Estimated Out-of-Sample Error is `r ose*100`%.
+Random Forests yielded better Results
+
+### Predicting The Manner of Exercise for Test Data Set
+
+```{r testRFModelTestData, echo=T}
+rm(accuracy)
+rm(ose)
+predict(modelRF, testing[, -length(names(testing))])
+```
+
+### Output in the file
+
+```{r OutputData, echo=T}
+pml_write_files<- function(x){
+  for(i in 1:length(x)){
+    filename = paste0("./Assignment_Solutions/problem_id_",i,".txt")
+    write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+  }
+}
+pml_write_files(predict(modelRF, testing[, -length(names(testing))]))
+rm(modelRF)
+rm(training)
+rm(testing)
+rm(validation)
+rm(pml_write_files)
+```
