@@ -176,16 +176,9 @@ rm(ose)
 predict(modelRF, testing[, -length(names(testing))])
 ```
 
-### Output in the file
+### Remove the objects
 
-```{r OutputData, echo=T}
-pml_write_files<- function(x){
-  for(i in 1:length(x)){
-    filename = paste0("./Assignment_Solutions/problem_id_",i,".txt")
-    write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
-  }
-}
-pml_write_files(predict(modelRF, testing[, -length(names(testing))]))
+```{r rmObjects, echo=T}
 rm(modelRF)
 rm(training)
 rm(testing)
