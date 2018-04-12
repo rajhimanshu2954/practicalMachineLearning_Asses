@@ -3,6 +3,7 @@ title: "Coursera_PML_Assessment"
 author: "Himanshu Raj"
 date: "4 April 2018"
 output: html_document
+keep_md: true
 ---
 
 ```{r setup, include=FALSE}

@@ -386,20 +386,14 @@ predict(modelRF, testing[, -length(names(testing))])</code></pre>
 <pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
 ## Levels: A B C D E</code></pre>
 </div>
-<div id="output-in-the-file" class="section level3">
-<h3>Output in the file</h3>
-<pre class="r"><code>pml_write_files&lt;- function(x){
-  for(i in 1:length(x)){
-    filename = paste0(&quot;./Assignment_Solutions/problem_id_&quot;,i,&quot;.txt&quot;)
-    write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
-  }
-}
-pml_write_files(predict(modelRF, testing[, -length(names(testing))]))
-rm(modelRF)
+<div id="remove-the-objects" class="section level3">
+<h3>Remove the objects</h3>
+<pre class="r"><code>rm(modelRF)
 rm(training)
 rm(testing)
 rm(validation)
 rm(pml_write_files)</code></pre>
+<pre><code>## Warning in rm(pml_write_files): object 'pml_write_files' not found</code></pre>
 </div>
 </div>
 
